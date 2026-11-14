@@ -1,0 +1,5 @@
+parameters:
+	level: max
+	checkExplicitMixed: false
+	paths:
+		- src
