@@ -112,3 +112,7 @@ final class NullEmitter implements EmitterInterface
     public function emit(ResponseInterface $response): void {}
 }
 ```
+
+## License
+
+MIT, see [LICENSE](LICENSE).
