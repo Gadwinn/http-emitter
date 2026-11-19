@@ -22,12 +22,6 @@ class Emitter implements EmitterInterface
     protected const WILDCARD = '*';
     protected const HEADER_SET_COOKIE = 'set-cookie';
 
-    protected const UNIT_TERA = 't';
-    protected const UNIT_GIGA = 'g';
-    protected const UNIT_MEGA = 'm';
-    protected const UNIT_KILO = 'k';
-    protected const UNIT_BYTE = 'b';
-
     /**
      * @var array<string,mixed>
      */
@@ -36,7 +30,12 @@ class Emitter implements EmitterInterface
         'maxBufferLength' => 8192,
     ];
 
-    protected const REGEX_CONTENT_RANGE = '/(?P<unit>\w+) (?P<start>\d+)\-(?P<end>\d+)\/(?P<length>\d+|\*)/';
+    /**
+     * `bytes` is the only range unit defined by RFC 9110 (§14.1, case-insensitive);
+     * a Content-Range in any other unit is left to the application and the body is
+     * emitted as it is.
+     */
+    protected const REGEX_CONTENT_RANGE = '/^bytes[ \t]+(?P<start>\d+)-(?P<end>\d+)\/(?P<length>\d+|\*)$/iD';
     protected const STATUS_CODES_NO_BODY = ['1\d\d', '204', '205', '304'];
 
     /**
@@ -201,8 +200,7 @@ class Emitter implements EmitterInterface
     /**
      * @param ResponseInterface $response
      *
-     * @return array<string,mixed>
-     * @throws RuntimeException
+     * @return array<string,mixed> Empty when there is no usable `bytes` range
      */
     protected function getRange(ResponseInterface $response): array
     {
@@ -216,44 +214,15 @@ class Emitter implements EmitterInterface
         }
 
         $range = [
-            'unit' => $matches['unit'],
+            'unit' => 'bytes',
             'start' => (int) $matches['start'],
             'end' => (int) $matches['end'],
-            'length' => (int) (
-                $matches['length'] && $matches['length'] !== self::WILDCARD ?
-                $matches['length'] :
-                0
-            ), //$response->getHeaderLine('Content-Length')),
+            'length' => $matches['length'] !== self::WILDCARD ? (int) $matches['length'] : 0,
         ];
 
-        $multiplier = 1;
-        switch (strtolower(substr($range['unit'], 0, 1))) {
-            case self::UNIT_TERA:
-                $multiplier *= 1024;
-                // no break
-            case self::UNIT_GIGA:
-                $multiplier *= 1024;
-                // no break
-            case self::UNIT_MEGA:
-                $multiplier *= 1024;
-                // no break
-            case self::UNIT_KILO:
-                $multiplier *= 1024;
-                // no break
-            case self::UNIT_BYTE:
-                break;
-            default:
-                $this->error('Unsupported unit \'' . $range['unit'] . '\' in Content-Range header');
-                break;
-        }
-
-        if ($multiplier > 1) {
-            $range = [
-                'unit' => $range['unit'],
-                'start' => $range['start'] * $multiplier,
-                'end' => $range['end'] * $multiplier,
-                'length' => $range['length'] * $multiplier,
-            ];
+        // RFC 9110 §14.4: a range whose last position is before its first is invalid
+        if ($range['end'] < $range['start']) {
+            return [];
         }
 
         $range['size'] = $range['end'] - $range['start'] + 1;
