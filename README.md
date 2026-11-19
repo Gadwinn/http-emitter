@@ -69,6 +69,17 @@ $emitter = new Emitter(['maxBufferLength' => 65536]); // 64 KB chunks
 
 ---
 
+### End of the response
+
+After the body, the emitter calls `fastcgi_finish_request()` when the SAPI provides it
+(PHP-FPM, FrankenPHP): the client receives the complete response at once, and the script
+goes on (cleanup, `finally` blocks, the reset of services in a worker loop) without making it
+wait. Anything echoed after `emit()` is therefore not sent; emit exactly one response per request.
+Checked in FrankenPHP worker mode, where the function exists and finishes the current request
+only: the worker keeps serving the next ones.
+
+---
+
 ### Partial content (Content-Range)
 
 When the response carries a `Content-Range` header in `bytes` (the only range unit defined by RFC 9110), the emitter slices the body to the declared range. Any other unit (`items 0-9/100`...) is left to the application: the body is emitted as it is.
