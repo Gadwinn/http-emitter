@@ -71,7 +71,7 @@ $emitter = new Emitter(['maxBufferLength' => 65536]); // 64 KB chunks
 
 ### Partial content (Content-Range)
 
-When the response carries a `Content-Range` header, the emitter automatically slices the body to the declared byte range. Supported units: `bytes`, `kilobytes`, `megabytes`, `gigabytes`, `terabytes`.
+When the response carries a `Content-Range` header in `bytes` (the only range unit defined by RFC 9110), the emitter slices the body to the declared range. Any other unit (`items 0-9/100`...) is left to the application: the body is emitted as it is.
 
 ```php
 // The emitter reads Content-Range from the response and emits only the requested slice.
