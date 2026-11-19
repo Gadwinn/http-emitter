@@ -159,6 +159,11 @@ final class EmitterTest extends TestCase
             'range ending past the body' => ['bytes 8-20/10', true, 8192, '89'],
             'non seekable body'          => ['bytes 2-5/10', false, 8192, '2345'],
             'unsatisfied range'          => ['bytes */10', true, 8192, '0123456789'],
+            'unit is case-insensitive'   => ['BYTES 2-5/10', true, 8192, '2345'],
+            'last before first position' => ['bytes 5-2/10', true, 8192, '0123456789'],
+            'other unit left as it is'   => ['items 0-3/10', true, 8192, '0123456789'],
+            'no size multiplier'         => ['kilobytes 0-0/1', true, 8192, '0123456789'],
+            'unit starting with t'       => ['tokens 0-1/10', false, 8192, '0123456789'],
         ];
     }
 
